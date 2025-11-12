@@ -26,7 +26,7 @@ Você deve construir uma API de pagamentos para carteiras virtuais (**wallets**)
 
 ## Tecnologias (preferenciais)
 
-- **Linguagem**: Kotlin ou Java (preferencial).
+- **Linguagem**: Kotlin ou Java.
 - **Banco de dados**: o candidato poderá definir qual o banco de dados se encaixa nos requisitos.
 - Outras stacks são aceitáveis, desde que atendam aos requisitos funcionais e não funcionais, mas será considerado diferencial seguir as preferências acima.
 
