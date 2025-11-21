@@ -48,7 +48,7 @@ Você deve construir uma API de pagamentos para carteiras virtuais (**wallets**)
 - As bordas devem ser respeitadas:
   - `>= 06:00:00` e `< 18:00:00` → diurno
   - `>= 18:00:00` e `< 06:00:00` (do dia seguinte) → noturno
-- Cada carteira pode estar vinculada a uma **política de limites**.
+- Cada carteira pode estar vinculada a uma ou mais **política de limites**.
 - O sistema deve suportar **mais de um tipo de política**, por **categoria**. Exemplos de categorias:
   - `VALUE_LIMIT` (limites por valor total/por período) — **categoria da política padrão (default)**.
   - `TX_COUNT_LIMIT` (limites por quantidade de transações por dia) — exemplo em *Bônus*.
