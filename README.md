@@ -255,6 +255,38 @@ PUT /wallets/{walletId}/policy
 
 ---
 
+## Como rodar
+
+### Local (PostgreSQL)
+
+- **Pré-requisito:** PostgreSQL 15 rodando.
+- **Variáveis de ambiente (opcionais):** `DB_HOST` (default `localhost`), `DB_PORT` (default `5432`), `DB_NAME` (default `postgres`), `DB_USER`, `DB_PASSWORD`. Ou `DATABASE_JDBC_URL`.
+- Comando: `./gradlew run`
+
+### Docker Compose
+
+- `docker compose up` — sobe Postgres e a aplicação. O Flyway roda no startup. Health: `GET /health`.
+
+### Testes
+
+- `./gradlew test` — testes unitários (e de integração, se Docker estiver disponível).
+- Os testes de integração (Testcontainers/PostgreSQL) e E2E de API (`ApiE2ETest`) estão anotados com `@Ignore` por padrão. Para rodá-los, remova `@Ignore` das classes em `com.trace.payments.infrastructure` e execute com Docker ativo:  
+  `./gradlew test --tests 'com.trace.payments.infrastructure.*'`
+
+---
+
+## Decisões de arquitetura e trade-offs
+
+- **Exposed vs JPA:** Uso de Exposed (DSL em Kotlin) para alinhar com Ktor e manter SQL explícito; lock pessimista via `forUpdate()` direto nas queries.
+- **Lock pessimista:** Na criação de pagamento, `lockAndGet(walletId)` com `SELECT ... FOR UPDATE` serializa o uso do limite por carteira, evitando race que ultrapassaria o limite (RF-11).
+- **Idempotência por header:** `Idempotency-Key` no header (não no body), alinhado a padrão de mercado; retries de infra não alteram o corpo. `UNIQUE(idempotency_key)` + checagem de `(wallet_id, amount, occurredAt)` para 200 vs 409.
+- **Paginação por cursor:** `cursor` = id do último item; próxima página: `id > cursor ORDER BY id`. Performance estável com muitos registros.
+- **Strategy para políticas:** Interface `PolicyValidator` com `supports(category)` e `validate()`. `ValueLimitValidator` e `TxCountLimitValidator`; nova política = nova classe, sem alterar o fluxo de pagamento (RF-09, bônus TX_COUNT_LIMIT).
+- **Cálculo dinâmico de período:** Período (DAYTIME/NIGHTTIME/WEEKEND) e intervalo calculados a partir de `occurredAt` em UTC; `SUM`/`COUNT` em queries com índices `(wallet_id, occurred_at)`. Sem jobs assíncronos.
+- **Alinhamento README/ADR:** Contrato da API segue o README; schema, idempotência e políticas conforme ADR adaptada para Ktor/Exposed.
+
+---
+
 ## Pré-requisitos (eliminatórios)
 
 - Repositório privado no GitHub.
