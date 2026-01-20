@@ -1,0 +1,177 @@
+{
+  "info": {
+    "name": "Payment API",
+    "description": "Collection para avaliar a Payment API (Trace Back-end Challenge). Base URL: http://localhost:8080. Execute em ordem: Health → Criar carteira → Criar política → Associar → Pagamento → Listagens.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "walletId", "value": "" },
+    { "key": "policyId", "value": "" },
+    { "key": "policyIdTx", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/health", "host": ["{{base_url}}"], "path": ["health"] },
+        "description": "Verifica se a aplicação está de pé. Esperado: 200, corpo OK."
+      }
+    },
+    {
+      "name": "Criar carteira",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var j = pm.response.json();",
+              "if (j && j.id) { pm.collectionVariables.set('walletId', j.id); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"ownerName\": \"Avaliador\"\n}" },
+        "url": { "raw": "{{base_url}}/wallets", "host": ["{{base_url}}"], "path": ["wallets"] },
+        "description": "Cria carteira. 201. O id é salvo em walletId para as próximas requisições."
+      }
+    },
+    {
+      "name": "Criar política VALUE_LIMIT",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var j = pm.response.json();",
+              "if (j && j.id) { pm.collectionVariables.set('policyId', j.id); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"DEFAULT_VALUE_LIMIT\",\n  \"category\": \"VALUE_LIMIT\",\n  \"maxPerPayment\": 1000,\n  \"daytimeDailyLimit\": 4000,\n  \"nighttimeDailyLimit\": 1000,\n  \"weekendDailyLimit\": 1000\n}"
+        },
+        "url": { "raw": "{{base_url}}/policies", "host": ["{{base_url}}"], "path": ["policies"] },
+        "description": "Cria política de limites por valor. 201. O id é salvo em policyId."
+      }
+    },
+    {
+      "name": "Criar política TX_COUNT_LIMIT (bônus)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var j = pm.response.json();",
+              "if (j && j.id) { pm.collectionVariables.set('policyIdTx', j.id); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Tx5\",\n  \"category\": \"TX_COUNT_LIMIT\",\n  \"maxTxPerDay\": 5\n}"
+        },
+        "url": { "raw": "{{base_url}}/policies", "host": ["{{base_url}}"], "path": ["policies"] },
+        "description": "Cria política de 5 transações/dia. 201. O id é salvo em policyIdTx. Para associar: use PUT com {\"policyId\":\"{{policyIdTx}}\"}."
+      }
+    },
+    {
+      "name": "Associar política à carteira",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"policyId\": \"{{policyId}}\"\n}" },
+        "url": { "raw": "{{base_url}}/wallets/{{walletId}}/policy", "host": ["{{base_url}}"], "path": ["wallets", "{{walletId}}", "policy"] },
+        "description": "Associa a política VALUE_LIMIT (policyId) à carteira. 204. Execute após Criar carteira e Criar política VALUE_LIMIT."
+      }
+    },
+    {
+      "name": "Associar política TX_COUNT à carteira (bônus)",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"policyId\": \"{{policyIdTx}}\"\n}" },
+        "url": { "raw": "{{base_url}}/wallets/{{walletId}}/policy", "host": ["{{base_url}}"], "path": ["wallets", "{{walletId}}", "policy"] },
+        "description": "Associa a política TX_COUNT_LIMIT à carteira. 204. Use após Criar política TX_COUNT_LIMIT."
+      }
+    },
+    {
+      "name": "Realizar pagamento",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Idempotency-Key", "value": "eval-pay-1", "description": "Obrigatório. Use valor único para cada novo pagamento (eval-pay-2, eval-pay-3...)." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"amount\": 100,\n  \"occurredAt\": \"2024-08-26T10:00:00Z\"\n}"
+        },
+        "url": { "raw": "{{base_url}}/wallets/{{walletId}}/payments", "host": ["{{base_url}}"], "path": ["wallets", "{{walletId}}", "payments"] },
+        "description": "Cria pagamento. 201 ou 200 (idempotência). 422 se exceder limite. Idempotency-Key é obrigatório."
+      }
+    },
+    {
+      "name": "Listar pagamentos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/wallets/{{walletId}}/payments",
+          "host": ["{{base_url}}"],
+          "path": ["wallets", "{{walletId}}", "payments"],
+          "query": [
+            { "key": "limit", "value": "20", "disabled": true },
+            { "key": "cursor", "value": "", "disabled": true },
+            { "key": "startDate", "value": "2024-08-25T00:00:00Z", "disabled": true },
+            { "key": "endDate", "value": "2024-08-26T23:59:59Z", "disabled": true }
+          ]
+        },
+        "description": "Lista pagamentos da carteira. 200. Query opcionais: limit, cursor, startDate, endDate (ISO-8601)."
+      }
+    },
+    {
+      "name": "Políticas da carteira",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{base_url}}/wallets/{{walletId}}/policies", "host": ["{{base_url}}"], "path": ["wallets", "{{walletId}}", "policies"] },
+        "description": "Lista políticas associadas à carteira. 200. Resposta: data, meta.total."
+      }
+    },
+    {
+      "name": "Listar políticas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/policies",
+          "host": ["{{base_url}}"],
+          "path": ["policies"],
+          "query": [
+            { "key": "limit", "value": "20", "disabled": true },
+            { "key": "cursor", "value": "", "disabled": true }
+          ]
+        },
+        "description": "Lista todas as políticas. 200. Query opcionais: limit, cursor."
+      }
+    }
+  ]
+}
